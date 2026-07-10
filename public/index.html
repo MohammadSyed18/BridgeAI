@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BridgeAI</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main>
+    <p class="eyebrow">Family information assistant</p>
+    <h1>Find the answer.<br><span>See the source.</span></h1>
+    <p class="intro">Ask about deadlines, registration, devices, or school requirements. BridgeAI answers only from indexed announcements.</p>
+    <form id="ask-form">
+      <input id="question" aria-label="Question" placeholder="When does dual credit registration close?" maxlength="500" required>
+      <button>Ask BridgeAI</button>
+    </form>
+    <div class="examples">
+      <button data-question="When does dual credit registration close?">Dual credit deadline</button>
+      <button data-question="¿Cuándo necesito registrar para dual credit?">Pregunta en español</button>
+      <button data-question="What do I bring to device pickup?">Device pickup</button>
+    </div>
+    <section id="result" hidden>
+      <div class="confidence"><span>Confidence</span><strong id="confidence"></strong></div>
+      <p id="answer"></p>
+      <h2>Sources</h2>
+      <ol id="sources"></ol>
+      <div id="actions-wrap"><h2>Next steps</h2><ul id="actions"></ul></div>
+    </section>
+  </main>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
+
