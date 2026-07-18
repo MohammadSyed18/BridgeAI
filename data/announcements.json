@@ -1,0 +1,27 @@
+[
+  {
+    "id": "fall-registration",
+    "title": "Fall Dual Credit Registration",
+    "url": "https://district.example.edu/dual-credit/fall-registration",
+    "publishedAt": "2026-07-28T15:00:00Z",
+    "authority": 0.95,
+    "body": "Fall dual credit registration closes August 18, 2026. Students must complete the college application and upload proof of meningitis vaccination before registering. Families who need help may attend the counseling lab on Tuesday from 4:00 to 6:00 PM. Contact the campus counselor if a transcript has not appeared in the portal within three business days."
+  },
+  {
+    "id": "device-pickup",
+    "title": "Student Device Pickup",
+    "url": "https://district.example.edu/technology/device-pickup",
+    "publishedAt": "2026-08-01T14:00:00Z",
+    "authority": 0.9,
+    "body": "Student laptop pickup is August 11 and August 12 at the high school library. Bring a student ID or another photo ID. A parent may pick up a device for a student after signing the technology agreement in the family portal. There is no device fee for the 2026-27 school year."
+  },
+  {
+    "id": "meal-benefits",
+    "title": "Meal Benefits Application",
+    "url": "https://district.example.edu/nutrition/meal-benefits",
+    "publishedAt": "2026-07-20T14:00:00Z",
+    "authority": 0.9,
+    "body": "The 2026-27 meal benefits application is open. Families should submit one application per household, not one per student. Processing normally takes seven to ten school days. Eligibility notices will be sent through the family portal."
+  }
+]
+
