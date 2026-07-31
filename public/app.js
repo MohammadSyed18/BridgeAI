@@ -15,6 +15,8 @@ form.addEventListener("submit", async event => {
   try {
     const response = await fetch("/api/ask", {method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({question:input.value})});
     const data = await response.json();
+    if (!response.ok) throw new Error(data.error ?? "Request failed");
+    document.querySelector("#error").hidden = true;
     document.querySelector("#answer").textContent = data.answer;
     document.querySelector("#confidence").textContent = `${Math.round(data.confidence * 100)}%`;
     document.querySelector("#sources").replaceChildren(...data.citations.map(source => {
@@ -28,9 +30,34 @@ form.addEventListener("submit", async event => {
     }));
     document.querySelector("#actions-wrap").hidden = !data.actions.length;
     result.hidden = false;
+  } catch (error) {
+    const message = document.querySelector('#error');
+    message.textContent = error.message || 'Could not reach the service. Please retry.';
+    message.hidden = false;
+    result.hidden = true;
   } finally {
     submit.disabled = false;
     submit.textContent = "Ask BridgeAI";
   }
 });
 
+
+async function loadDeadlines() {
+  const list = document.querySelector('#deadlines');
+  try {
+    const response = await fetch('/api/deadlines');
+    if (!response.ok) throw new Error('Could not load deadlines');
+    const {events} = await response.json();
+    list.replaceChildren(...events.map(event => {
+      const item = document.createElement('li');
+      const link = document.createElement('a');
+      link.href = event.url;
+      link.textContent = `${event.date}: ${event.action}`;
+      link.rel = 'noreferrer';
+      item.append(link);
+      return item;
+    }));
+    if (!events.length) list.textContent = 'No upcoming dates are currently indexed.';
+  } catch { list.textContent = 'Deadlines are unavailable. Try again later.'; }
+}
+loadDeadlines();

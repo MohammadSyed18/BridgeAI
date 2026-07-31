@@ -20,7 +20,14 @@
       <button data-question="¿Cuándo necesito registrar para dual credit?">Pregunta en español</button>
       <button data-question="What do I bring to device pickup?">Device pickup</button>
     </div>
-    <section id="result" hidden>
+    <p id="error" role="alert" hidden></p>
+    <section aria-labelledby="deadlines-title">
+      <h2 id="deadlines-title">Upcoming deadlines</h2>
+      <p>Explicit dates from indexed notices. Confirm details with the linked source.</p>
+      <ul id="deadlines"></ul>
+      <a href="/api/calendar.ics" download="bridgeai-deadlines.ics">Download calendar</a>
+    </section>
+    <section id="result" hidden aria-live="polite">
       <div class="confidence"><span>Confidence</span><strong id="confidence"></strong></div>
       <p id="answer"></p>
       <h2>Sources</h2>

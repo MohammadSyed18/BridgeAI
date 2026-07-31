@@ -1,19 +1,59 @@
-# bridgeai
+# BridgeAI
 
-school notices -> answers, deadlines, next steps
+A source-grounded school-information assistant: indexed notices become cited answers, next steps, and explicit-date calendar entries. The included browser interface and HTTP service run locally without an API key.
 
-local retrieval with sources attached. BM25-style matching + freshness + source authority. English/Spanish query normalization.
+## Run
 
-confidence depends on how much the sources actually cover.
+Node 20 or newer; no runtime packages are required.
 
 ```sh
 npm test
 npm start
 # http://localhost:8080
+node src/evaluate.js
 ```
 
-includes a small HTTP API and demo ui. the notices are local; there is no live school-district connection yet.
+## Implementation
 
-## Implementation details
+| Module | Responsibility |
+| --- | --- |
+| [index.js](src/index.js) | BM25-style passage retrieval, freshness and authority weighting, cited extractive answers |
+| [catalog.js](src/catalog.js) | Validated batch ingestion, revision hashes, stale-update protection, audience/expiry filtering, atomic snapshots |
+| [text.js](src/text.js) | Tokenization, limited English/Spanish query normalization, sentence and action extraction |
+| [deadlines.js](src/deadlines.js) | Explicit-date parsing, deduplicated events, escaped and UTF-8-folded iCalendar export |
+| [http.js](src/http.js) | Testable HTTP application with body limits, validation, static-asset allowlist, and error responses |
+| [evaluate.js](src/evaluate.js) | Fixture-based source precision, recall, and abstention checks |
+| [ingest.js](src/ingest.js) | Local operator ingestion command |
+| [public/](public/) | Question interface, source links, next steps, upcoming deadlines, calendar download |
 
-Documents can be replaced or removed while maintaining passage-frequency statistics. Answer citation numbers map to the unique source list, including answers that use several sentences from one source.
+A batch is checked in full before the searchable catalog changes. Updates require a newer `updatedAt` if their content differs; stale and conflicting same-version updates are rejected. Optional `audiences` and `expiresAt` fields limit retrieval scope, and future notices are omitted. Audience filtering personalizes public notices; it is not an authorization mechanism for private student data.
+
+Answers are assembled from retrieved source sentences. Citation numbers point to the unique source list. Confidence is a retrieval heuristic rather than a calibrated probability or a claim of correctness. The small Spanish dictionary normalizes selected query terms; it does not translate all answers.
+
+## API
+
+| Method | Path | Result |
+| --- | --- | --- |
+| POST | `/api/ask` | `{question, audience?}` → answer, confidence, citations, actions, catalog revision |
+| GET | `/api/notices?audience=seniors` | Currently visible notices |
+| GET | `/api/deadlines` | Upcoming explicit-date events with source links |
+| GET | `/api/calendar.ics` | Downloadable all-day calendar entries |
+| GET | `/api/health` | Document count and catalog revision |
+
+Calendar extraction deliberately requires a full date with a year. Relative weekdays and ambiguous numeric dates stay in source text rather than becoming guessed events. Events are all-day entries, not inferred closing times.
+
+## Updating a local catalog
+
+```sh
+cp data/announcements.json /tmp/bridge-catalog.json
+node src/ingest.js /tmp/bridge-catalog.json /path/to/notice-batch.json
+BRIDGE_CATALOG=/tmp/bridge-catalog.json npm start
+```
+
+The batch is an array using the existing notice schema. Restart the service after updating its snapshot. The operator command assumes a single writer. No unauthenticated ingestion endpoint is exposed.
+
+The bundled notices use example source URLs; there is no live school-district connection. Confirm real deadlines against original sources before relying on them.
+
+## Verification
+
+`npm test` covers retrieval updates, citation numbering, atomic ingestion, persistence, audience scope, future/expired notices, invalid dates, calendar escaping, UTF-8 line folding, and actual HTTP requests including malformed and oversized input. `node src/evaluate.js` runs the small, hand-authored question fixture; its scores describe that fixture, not an external accuracy benchmark.

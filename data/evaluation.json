@@ -1,0 +1,40 @@
+[
+  {
+    "question": "dual credit registration",
+    "expectedSources": [
+      "fall-registration"
+    ],
+    "now": "2026-08-02"
+  },
+  {
+    "question": "meal benefits",
+    "expectedSources": [
+      "meal-benefits"
+    ],
+    "now": "2026-08-02"
+  },
+  {
+    "question": "interplanetary spacecraft",
+    "expectedSources": [],
+    "now": "2026-08-02"
+  },
+  {
+    "question": "¿Cuándo registrar dual credit?",
+    "expectedSources": [
+      "fall-registration"
+    ],
+    "now": "2026-08-02"
+  },
+  {
+    "question": "laptop pickup",
+    "expectedSources": [
+      "device-pickup"
+    ],
+    "now": "2026-08-02"
+  },
+  {
+    "question": "dual credit registration",
+    "expectedSources": [],
+    "now": "2026-06-01"
+  }
+]
