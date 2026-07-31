@@ -68,3 +68,57 @@ async function loadDeadlines() {
   } catch { list.textContent = 'Deadlines are unavailable. Try again later.'; }
 }
 loadDeadlines();
+
+const searchForm = document.querySelector('#search-form');
+const searchInput = document.querySelector('#search-query');
+const searchResults = document.querySelector('#search-results');
+const searchStatus = document.querySelector('#search-status');
+const moreButton = document.querySelector('#search-more');
+let searchCursor = null;
+let searchQuery = '';
+let searchRequest = 0;
+let searchAbort = null;
+
+async function searchNotices(append = false) {
+  const requestId = ++searchRequest;
+  searchAbort?.abort();
+  searchAbort = new AbortController();
+  if (!append) {
+    searchQuery = searchInput.value.trim();
+    searchCursor = null;
+    searchResults.replaceChildren();
+  }
+  const parameters = new URLSearchParams({q:searchQuery, limit:'5'});
+  if (append && searchCursor) parameters.set('cursor', searchCursor);
+  const submit = searchForm.querySelector('button');
+  submit.disabled = true; moreButton.disabled = true;
+  searchStatus.textContent = 'Searching notices…';
+  try {
+    const response = await fetch('/api/search?' + parameters, {signal:searchAbort.signal});
+    const data = await response.json();
+    if (requestId !== searchRequest) return;
+    if (!response.ok) throw new Error(data.error ?? 'Search failed');
+    for (const item of data.items) {
+      const row = document.createElement('li');
+      const link = document.createElement('a');
+      link.href = item.url; link.textContent = item.title; link.target = '_blank'; link.rel = 'noreferrer';
+      const excerpt = document.createElement('blockquote'); excerpt.textContent = item.excerpt;
+      const details = document.createElement('details');
+      const label = document.createElement('summary'); label.textContent = 'Why this matched';
+      const explanation = document.createElement('p');
+      explanation.textContent = `Matched terms: ${item.explanation.matchedTerms.join(', ')}. Published ${item.publishedAt.slice(0, 10)}. Results rank by text relevance, freshness, and source authority.`;
+      details.append(label, explanation); row.append(link, excerpt, details); searchResults.append(row);
+    }
+    searchCursor = data.nextCursor;
+    moreButton.hidden = !searchCursor;
+    searchStatus.textContent = data.total ? `${searchResults.children.length} of ${data.total}${data.capped ? '+' : ''} matching excerpts` : 'No matching excerpts. Try a different topic.';
+  } catch (failure) {
+    if (requestId !== searchRequest || failure.name === 'AbortError') return;
+    searchStatus.textContent = failure.message || 'Search is unavailable. Try again.';
+    if (!append) moreButton.hidden = true;
+  } finally {
+    if (requestId === searchRequest) { submit.disabled = false; moreButton.disabled = false; }
+  }
+}
+searchForm.addEventListener('submit', event => { event.preventDefault(); searchNotices(); });
+moreButton.addEventListener('click', () => searchNotices(true));

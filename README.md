@@ -37,6 +37,7 @@ Answers are assembled from retrieved source sentences. Citation numbers point to
 | Method | Path | Result |
 | --- | --- | --- |
 | POST | `/api/ask` | `{question, audience?}` → answer, confidence, citations, actions, catalog revision |
+| GET | `/api/search?q=registration&limit=5` | Ranked source excerpts, score explanations, and continuation cursor |
 | GET | `/api/notices?audience=seniors` | Currently visible notices |
 | GET | `/api/deadlines` | Upcoming explicit-date events with source links |
 | GET | `/api/calendar.ics` | Downloadable all-day calendar entries |
@@ -65,3 +66,9 @@ The bundled notices use example source URLs; there is no live school-district co
 Repeated query words count once. Ranking exposes lexical, freshness, authority, and matched-term components. Candidate source sentences are selected for query coverage and new evidence while penalizing repetition; identical sentences are shown once. Questions with less than 25% unique-term coverage abstain. This threshold is a configurable policy in `selectEvidence`, not a measured guarantee of answer correctness. Exact source excerpts appear under the browser citations and in the API's `evidence` array. `retrieval` reports coverage, unmatched terms, and the support/abstention reason.
 
 The catalog reuses at most 16 scoped indexes. Visibility is checked on every request before cache lookup, including expiry and future publication. A catalog change invalidates cached indexes; the request clock still controls freshness ranking. This cache holds indexes rather than answers. These are local public-notice scopes, not authentication or a private student-data boundary.
+
+## Source explorer
+
+The browser source explorer and `GET /api/search` return exact passage excerpts and matched terms independently of answer generation. Optional `audience`, `limit` (1–20), and `cursor` parameters support bounded pagination over the top 100 passages. Cursor ranking uses a fixed timestamp for at most 15 minutes. Changing the query, page size, audience, catalog revision, or visible notice set invalidates the cursor with HTTP 409; restart from page one. Notice visibility is checked at the current time on every page, so an expired item cannot remain available through an older cursor. Cursors carry no private records and are not authorization tokens.
+
+`searchPage.js` owns cursor validation and result serialization. The browser cancels superseded searches, prevents stale responses from replacing newer results, and inserts source text as plain text rather than HTML.

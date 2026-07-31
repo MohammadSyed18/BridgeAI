@@ -1,6 +1,7 @@
 import {createServer} from 'node:http';
 import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
+import {SearchError} from './searchPage.js';
 import {CatalogError} from './catalog.js';
 import {deadlines, toCalendar} from './deadlines.js';
 
@@ -33,6 +34,11 @@ export function createBridgeServer(catalog, {clock = () => new Date()} = {}) {
         if (!payload || typeof payload !== 'object') throw new HttpError(400, 'Expected an object');
         return send(response, 200, catalog.ask(payload.question, {...options, audience: payload.audience ?? options.audience}));
       }
+      if (request.method === 'GET' && url.pathname === '/api/search') {
+        const limit = url.searchParams.has('limit') ? Number(url.searchParams.get('limit')) : 10;
+        return send(response, 200, catalog.search(url.searchParams.get('q'), {...options, limit,
+          cursor:url.searchParams.get('cursor') ?? undefined}));
+      }
       if (request.method === 'GET' && url.pathname === '/api/notices') {
         return send(response, 200, {revision: catalog.revision, notices: catalog.list(options)});
       }
@@ -48,7 +54,7 @@ export function createBridgeServer(catalog, {clock = () => new Date()} = {}) {
       }
       return send(response, request.method === 'GET' ? 404 : 405, {error:'Route not found'});
     } catch (error) {
-      if (error instanceof CatalogError || error instanceof HttpError) return send(response, error.status ?? 400, {error:error.message});
+      if (error instanceof CatalogError || error instanceof HttpError || error instanceof SearchError) return send(response, error.status ?? 400, {error:error.message});
       console.error('BridgeAI request failed:', error.message);
       if (!response.headersSent) send(response, 500, {error:'Internal error'});
     }

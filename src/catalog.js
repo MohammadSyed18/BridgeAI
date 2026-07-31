@@ -2,6 +2,7 @@ import {createHash} from 'node:crypto';
 import {readFile, writeFile, mkdir, rename, rm} from 'node:fs/promises';
 import {dirname} from 'node:path';
 import {randomUUID} from 'node:crypto';
+import {searchPage} from './searchPage.js';
 import {ScopeIndexCache} from './scopeCache.js';
 import {KnowledgeIndex, answer} from './index.js';
 
@@ -81,6 +82,12 @@ export class NoticeCatalog {
     const index = this.indexCache.get(this.list(options), this.revision);
     const result = answer(index, question, options.now ?? new Date());
     return {...result, revision: this.revision, scope: options.audience ?? 'all', extractive: true};
+  }
+  search(question, options = {}) {
+    const documents = this.list(options);
+    const index = this.indexCache.get(documents, this.revision);
+    return searchPage(index, {question, revision:this.revision, audience:options.audience ?? 'all',
+      documents, now:options.now ?? new Date(), limit:options.limit ?? 10, cursor:options.cursor});
   }
   async save(path) {
     const payload = JSON.stringify({version: 1, revision: this.revision, documents: [...this.documents.values()], audit: this.audit}, null, 2);

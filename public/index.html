@@ -27,6 +27,17 @@
       <ul id="deadlines"></ul>
       <a href="/api/calendar.ics" download="bridgeai-deadlines.ics">Download calendar</a>
     </section>
+    <section aria-labelledby="search-title">
+      <h2 id="search-title">Explore the sources</h2>
+      <p>Search exact excerpts, review why they matched, and open the original notice.</p>
+      <form id="search-form">
+        <input id="search-query" aria-label="Search notices" placeholder="Scholarships, registration, meal benefits…" maxlength="500" required>
+        <button>Search notices</button>
+      </form>
+      <p id="search-status" role="status"></p>
+      <ol id="search-results"></ol>
+      <button id="search-more" type="button" hidden>More results</button>
+    </section>
     <section id="result" hidden aria-live="polite">
       <div class="confidence"><span>Confidence</span><strong id="confidence"></strong></div>
       <p id="answer"></p>
