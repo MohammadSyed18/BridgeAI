@@ -8,16 +8,19 @@ export class KnowledgeIndex {
   }
 
   add(document) {
-    if (!document.id || !document.title || !document.body || !document.url) {
+    if (![document.id, document.title, document.body, document.url].every(value => typeof value === "string" && value.trim())) {
       throw new Error("document requires id, title, body, and url");
     }
+    const url = new URL(document.url);
+    if (!["https:", "http:"].includes(url.protocol)) throw new Error("source URL must use HTTP or HTTPS");
+    if (document.authority !== undefined && (!Number.isFinite(document.authority) || document.authority < 0 || document.authority > 1)) throw new Error("authority must be 0..1");
     if (this.documents.has(document.id)) throw new Error(`duplicate document: ${document.id}`);
     const publishedAt = new Date(document.publishedAt);
     if (Number.isNaN(publishedAt.valueOf())) throw new Error("publishedAt must be a valid date");
     const stored = {...document, publishedAt: publishedAt.toISOString()};
-    this.documents.set(stored.id, stored);
-
     const chunks = chunk(sentences(stored.body), 3);
+    if (!chunks.length) throw new Error("document must contain searchable text");
+    this.documents.set(stored.id, stored);
     for (let i = 0; i < chunks.length; i += 1) {
       const text = chunks[i].join(" ");
       const tokens = normalize(`${stored.title} ${text}`);
@@ -30,7 +33,29 @@ export class KnowledgeIndex {
     }
   }
 
+  remove(id) {
+    if (!this.documents.delete(id)) return false;
+    for (const passage of this.passages.filter(value => value.documentId === id)) {
+      for (const token of new Set(passage.tokens)) {
+        const count = this.documentFrequency.get(token) - 1;
+        if (count) this.documentFrequency.set(token, count);
+        else this.documentFrequency.delete(token);
+      }
+    }
+    this.passages = this.passages.filter(value => value.documentId !== id);
+    return true;
+  }
+
+  replace(document) {
+    const validation = new KnowledgeIndex();
+    validation.add(document);
+    this.remove(document.id);
+    this.add(document);
+  }
+
   search(query, limit = 5, now = new Date()) {
+    if (typeof query !== "string" || !Number.isInteger(limit) || limit < 1 || limit > 100 || Number.isNaN(now.valueOf())) throw new Error("invalid search parameters");
+    if (!this.passages.length) return [];
     const queryTokens = normalize(query);
     if (!queryTokens.length) return [];
     const averageLength = this.passages.reduce((sum, passage) => sum + passage.tokens.length, 0) / this.passages.length;
@@ -83,7 +108,7 @@ export function answer(index, question, now = new Date()) {
   const confidence = Number((0.55 * coverage + 0.25 * corroboration + 0.2 * topStrength).toFixed(2));
   const prefix = confidence < 0.45 ? "The available announcement suggests: " : "Based on the school announcements: ";
   return {
-    answer: prefix + selected.map(({sentence}, index) => `${sentence} [${index + 1}]`).join(" "),
+    answer: prefix + selected.map(({sentence, result}) => `${sentence} [${citations.findIndex(citation => citation.id === result.documentId) + 1}]`).join(" "),
     confidence,
     citations,
     actions: extractActions(selected.map(item => item.sentence).join(" "))

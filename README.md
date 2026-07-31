@@ -13,3 +13,7 @@ npm start
 ```
 
 includes a small HTTP API and demo ui. the notices are local; there is no live school-district connection yet.
+
+## Implementation details
+
+Documents can be replaced or removed while maintaining passage-frequency statistics. Answer citation numbers map to the unique source list, including answers that use several sentences from one source.
