@@ -19,6 +19,8 @@ node src/evaluate.js
 | --- | --- |
 | [index.js](src/index.js) | BM25-style passage retrieval, freshness and authority weighting, cited extractive answers |
 | [catalog.js](src/catalog.js) | Validated batch ingestion, revision hashes, stale-update protection, audience/expiry filtering, atomic snapshots |
+| [evidence.js](src/evidence.js) | Exact source-sentence selection, redundancy penalties, coverage-based abstention, and evidence metadata |
+| [scopeCache.js](src/scopeCache.js) | Bounded LRU indexes keyed by catalog revision and currently visible notices |
 | [text.js](src/text.js) | Tokenization, limited English/Spanish query normalization, sentence and action extraction |
 | [deadlines.js](src/deadlines.js) | Explicit-date parsing, deduplicated events, escaped and UTF-8-folded iCalendar export |
 | [http.js](src/http.js) | Testable HTTP application with body limits, validation, static-asset allowlist, and error responses |
@@ -57,3 +59,9 @@ The bundled notices use example source URLs; there is no live school-district co
 ## Verification
 
 `npm test` covers retrieval updates, citation numbering, atomic ingestion, persistence, audience scope, future/expired notices, invalid dates, calendar escaping, UTF-8 line folding, and actual HTTP requests including malformed and oversized input. `node src/evaluate.js` runs the small, hand-authored question fixture; its scores describe that fixture, not an external accuracy benchmark.
+
+## Evidence selection and retrieval cost
+
+Repeated query words count once. Ranking exposes lexical, freshness, authority, and matched-term components. Candidate source sentences are selected for query coverage and new evidence while penalizing repetition; identical sentences are shown once. Questions with less than 25% unique-term coverage abstain. This threshold is a configurable policy in `selectEvidence`, not a measured guarantee of answer correctness. Exact source excerpts appear under the browser citations and in the API's `evidence` array. `retrieval` reports coverage, unmatched terms, and the support/abstention reason.
+
+The catalog reuses at most 16 scoped indexes. Visibility is checked on every request before cache lookup, including expiry and future publication. A catalog change invalidates cached indexes; the request clock still controls freshness ranking. This cache holds indexes rather than answers. These are local public-notice scopes, not authentication or a private student-data boundary.

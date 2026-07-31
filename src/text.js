@@ -18,6 +18,7 @@ export function normalize(text) {
     .split(/\s+/)
     .filter(Boolean)
     .map(token => SPANISH_TO_ENGLISH.get(token) ?? token)
+    .map(token => token === "registration" || token === "registering" ? "register" : token)
     .filter(token => !STOPWORDS.has(token));
 }
 

@@ -17,7 +17,8 @@ test('ingestion is atomic on stale or malformed updates', () => {
 test('scope excludes future and expired notices and unrelated audiences', () => {
   const catalog = new NoticeCatalog([notice('all'), notice('seniors',{audiences:['seniors']}), notice('future',{publishedAt:'2027-01-01'}), notice('expired',{expiresAt:'2026-06-15'})]);
   assert.deepEqual(catalog.list({audience:'juniors',now}).map(item => item.id), ['all']);
-  assert.equal(catalog.ask('scholarship', {audience:'seniors',now}).citations.length, 2);
+  assert.deepEqual(catalog.list({audience:'seniors',now}).map(item => item.id), ['all','seniors']);
+  assert.equal(catalog.ask('scholarship', {audience:'seniors',now}).citations.length, 1); // identical evidence is cited once
   const copy = catalog.list({now}); copy[0].audiences.push('mutated');
   assert.ok(!catalog.list({now})[0].audiences.includes('mutated'));
 });

@@ -23,7 +23,14 @@ form.addEventListener("submit", async event => {
       const item = document.createElement("li");
       const link = document.createElement("a");
       link.href = source.url; link.textContent = source.title; link.target = "_blank"; link.rel = "noreferrer";
-      item.append(link); return item;
+      item.append(link);
+      const excerpts = data.evidence?.filter(item => data.citations[item.citation - 1]?.id === source.id) ?? [];
+      for (const evidence of excerpts) {
+        const quote = document.createElement('blockquote');
+        quote.textContent = evidence.text;
+        item.append(quote);
+      }
+      return item;
     }));
     document.querySelector("#actions").replaceChildren(...data.actions.map(action => {
       const item = document.createElement("li"); item.textContent = action.text; return item;

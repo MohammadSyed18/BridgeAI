@@ -2,6 +2,7 @@ import {createHash} from 'node:crypto';
 import {readFile, writeFile, mkdir, rename, rm} from 'node:fs/promises';
 import {dirname} from 'node:path';
 import {randomUUID} from 'node:crypto';
+import {ScopeIndexCache} from './scopeCache.js';
 import {KnowledgeIndex, answer} from './index.js';
 
 export class CatalogError extends Error {}
@@ -38,6 +39,7 @@ function fingerprint(notice) {
 export class NoticeCatalog {
   constructor(documents = []) {
     this.documents = new Map();
+    this.indexCache = new ScopeIndexCache();
     this.revision = 0;
     this.audit = [];
     this.ingest(documents);
@@ -60,6 +62,7 @@ export class NoticeCatalog {
     const candidate = new KnowledgeIndex();
     for (const notice of next.values()) candidate.add(notice);
     this.documents = next;
+    this.indexCache.clear();
     this.revision++;
     this.audit.push(...changes.map(change => ({...change, revision: this.revision})));
     return {revision: this.revision, changes};
@@ -75,8 +78,7 @@ export class NoticeCatalog {
   }
   ask(question, options = {}) {
     if (typeof question !== 'string' || !question.trim() || question.length > 500) throw new CatalogError('Question must contain 1–500 characters');
-    const index = new KnowledgeIndex();
-    for (const item of this.list(options)) index.add(item);
+    const index = this.indexCache.get(this.list(options), this.revision);
     const result = answer(index, question, options.now ?? new Date());
     return {...result, revision: this.revision, scope: options.audience ?? 'all', extractive: true};
   }

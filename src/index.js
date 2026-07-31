@@ -1,3 +1,4 @@
+import {composeAnswer} from './evidence.js';
 import {extractActions, normalize, sentences} from "./text.js";
 
 export class KnowledgeIndex {
@@ -56,12 +57,13 @@ export class KnowledgeIndex {
   search(query, limit = 5, now = new Date()) {
     if (typeof query !== "string" || !Number.isInteger(limit) || limit < 1 || limit > 100 || Number.isNaN(now.valueOf())) throw new Error("invalid search parameters");
     if (!this.passages.length) return [];
-    const queryTokens = normalize(query);
+    const queryTokens = [...new Set(normalize(query))];
     if (!queryTokens.length) return [];
     const averageLength = this.passages.reduce((sum, passage) => sum + passage.tokens.length, 0) / this.passages.length;
     return this.passages
       .map(passage => {
         const source = this.documents.get(passage.documentId);
+        if (Date.parse(source.publishedAt) > now.valueOf()) return {...passage, source, score: 0};
         const bm25 = queryTokens.reduce((total, token) => {
           const tf = passage.frequencies.get(token) ?? 0;
           if (!tf) return total;
@@ -73,46 +75,19 @@ export class KnowledgeIndex {
         const ageDays = Math.max(0, (now - new Date(source.publishedAt)) / 86_400_000);
         const freshness = Math.exp(-ageDays / 180);
         const authority = source.authority ?? 0.7;
-        return {...passage, source, score: bm25 * (0.65 + 0.2 * freshness + 0.15 * authority)};
+        return {...passage, source, score: bm25 * (0.65 + 0.2 * freshness + 0.15 * authority),
+          explanation: {lexical: bm25, freshness, authority, matchedTerms: queryTokens.filter(token => passage.frequencies.has(token))}};
       })
       .filter(result => result.score > 0)
-      .sort((a, b) => b.score - a.score)
+      .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id))
       .slice(0, limit);
   }
 }
 
 export function answer(index, question, now = new Date()) {
-  const results = index.search(question, 4, now);
-  if (!results.length) {
-    return {answer: "I could not find a source that answers that yet.", confidence: 0.08, citations: [], actions: []};
-  }
-  const queryTokens = new Set(normalize(question));
-  const selected = results
-    .flatMap(result => sentences(result.text).map(sentence => ({sentence, result})))
-    .map(candidate => ({
-      ...candidate,
-      overlap: normalize(candidate.sentence).filter(token => queryTokens.has(token)).length
-    }))
-    .sort((a, b) => b.overlap - a.overlap || b.result.score - a.result.score)
-    .slice(0, 3);
-  const citations = [...new Map(selected.map(({result}) => [result.documentId, {
-    id: result.documentId,
-    title: result.source.title,
-    url: result.source.url,
-    publishedAt: result.source.publishedAt,
-    passage: result.id
-  }])).values()];
-  const coverage = Math.min(1, new Set(results.flatMap(result => result.tokens.filter(token => queryTokens.has(token)))).size / queryTokens.size);
-  const corroboration = Math.min(1, new Set(results.map(result => result.documentId)).size / 2);
-  const topStrength = Math.min(1, results[0].score / 5);
-  const confidence = Number((0.55 * coverage + 0.25 * corroboration + 0.2 * topStrength).toFixed(2));
-  const prefix = confidence < 0.45 ? "The available announcement suggests: " : "Based on the school announcements: ";
-  return {
-    answer: prefix + selected.map(({sentence, result}) => `${sentence} [${citations.findIndex(citation => citation.id === result.documentId) + 1}]`).join(" "),
-    confidence,
-    citations,
-    actions: extractActions(selected.map(item => item.sentence).join(" "))
-  };
+  const results = index.search(question, 8, now);
+  const result = composeAnswer(results, question);
+  return {...result, actions: extractActions(result.evidence.map(item => item.text).join(' '))};
 }
 
 function frequency(tokens) {
