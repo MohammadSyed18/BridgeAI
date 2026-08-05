@@ -1,4 +1,4 @@
-import {extractActions, normalize, sentences} from "./text.js";
+import {extractActions, extractDates, normalize, sentences} from "./text.js";
 
 export class KnowledgeIndex {
   constructor() {
@@ -69,25 +69,56 @@ export function answer(index, question, now = new Date()) {
       overlap: normalize(candidate.sentence).filter(token => queryTokens.has(token)).length
     }))
     .sort((a, b) => b.overlap - a.overlap || b.result.score - a.result.score)
+    .filter(candidate => candidate.overlap > 0)
     .slice(0, 3);
-  const citations = [...new Map(selected.map(({result}) => [result.documentId, {
-    id: result.documentId,
-    title: result.source.title,
-    url: result.source.url,
-    publishedAt: result.source.publishedAt,
-    passage: result.id
-  }])).values()];
+  if (!selected.length) {
+    return {answer: "I could not find a source that answers that yet.", confidence: 0.08, citations: [], evidence: [], actions: [], conflicts: []};
+  }
+  const citationByDocument = new Map();
+  for (const {result} of selected) {
+    if (!citationByDocument.has(result.documentId)) citationByDocument.set(result.documentId, {
+      id: result.documentId,
+      title: result.source.title,
+      url: result.source.url,
+      publishedAt: result.source.publishedAt,
+      passage: result.id
+    });
+  }
+  const citations = [...citationByDocument.values()];
+  const citationNumber = new Map(citations.map((citation, index) => [citation.id, index + 1]));
+  const evidence = selected.map(({sentence, result}) => ({
+    statement: sentence,
+    citation: citationNumber.get(result.documentId),
+    passage: result.id,
+    score: Number(result.score.toFixed(3))
+  }));
   const coverage = Math.min(1, new Set(results.flatMap(result => result.tokens.filter(token => queryTokens.has(token)))).size / queryTokens.size);
   const corroboration = Math.min(1, new Set(results.map(result => result.documentId)).size / 2);
   const topStrength = Math.min(1, results[0].score / 5);
-  const confidence = Number((0.55 * coverage + 0.25 * corroboration + 0.2 * topStrength).toFixed(2));
+  const conflicts = findDateConflicts(evidence);
+  const confidence = Number(Math.max(0.05, 0.55 * coverage + 0.25 * corroboration + 0.2 * topStrength - 0.2 * conflicts.length).toFixed(2));
   const prefix = confidence < 0.45 ? "The available announcement suggests: " : "Based on the school announcements: ";
   return {
-    answer: prefix + selected.map(({sentence}, index) => `${sentence} [${index + 1}]`).join(" "),
+    answer: prefix + evidence.map(item => `${item.statement} [${item.citation}]`).join(" "),
     confidence,
     citations,
+    evidence,
+    conflicts,
     actions: extractActions(selected.map(item => item.sentence).join(" "))
   };
+}
+
+function findDateConflicts(evidence) {
+  const dates = new Map();
+  for (const item of evidence) {
+    for (const value of extractDates(item.statement)) {
+      const key = value.toLowerCase();
+      if (!dates.has(key)) dates.set(key, new Set());
+      dates.get(key).add(item.citation);
+    }
+  }
+  if (dates.size < 2) return [];
+  return [{type: "date", values: [...dates.entries()].map(([value, sources]) => ({value, citations: [...sources]}))}];
 }
 
 function frequency(tokens) {
@@ -101,4 +132,3 @@ function chunk(values, size) {
   for (let i = 0; i < values.length; i += size) output.push(values.slice(i, i + size));
   return output;
 }
-

@@ -39,3 +39,18 @@ test("action extraction keeps associated dates", () => {
   assert.deepEqual(actions[0].dates, ["August 18, 2026"]);
 });
 
+test("each answer marker points to its supporting source and conflicts lower confidence", () => {
+  const index = fixture();
+  index.add({
+    id:"reminder", title:"Registration reminder", url:"https://example.test/reminder",
+    publishedAt:"2026-08-02", authority:.8,
+    body:"Families should register online. Registration closes August 20, 2026."
+  });
+  const result = answer(index, "When does registration close?", new Date("2026-08-04"));
+  assert.equal(result.evidence.length, 2);
+  for (const item of result.evidence) {
+    assert.equal(item.passage.split("#")[0], result.citations[item.citation - 1].id);
+  }
+  assert.equal(result.conflicts[0].type, "date");
+  assert.ok(result.confidence < .8);
+});
