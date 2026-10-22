@@ -1,12 +1,13 @@
 # BridgeAI
 
-BridgeAI helps families turn scattered school announcements into sourced answers, deadlines, and next steps. It indexes announcements locally, retrieves the best supporting passages, extracts action items, and refuses to sound certain when the source coverage is weak.
+School announcements are easy to lose track of. This prototype searches a local set of notices and pulls out answers, deadlines, and next steps with links back to the source.
 
-Current state: ingestion, ranked retrieval, citations, confidence scoring, deadline extraction, English/Spanish query normalization, HTTP API, demo UI, and tests are working. Live district connectors are intentionally not included yet.
+The retrieval combines BM25-style text matching with freshness and source authority. It also handles English/Spanish query normalization. Confidence scores reflect the available source coverage.
 
-```bash
+```sh
 npm test
 npm start
-# open http://localhost:8080
+# http://localhost:8080
 ```
 
+Includes a small HTTP API and demo UI. The notices are local; there is no live school-district connection yet.
